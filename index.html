@@ -1,0 +1,1586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>FLASH — Instant Photobooth</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --cream: #faf6f0;
+  --warm-white: #fff9f2;
+  --charcoal: #1a1612;
+  --ink: #2d2620;
+  --amber: #c8601a;
+  --amber-light: #e8822a;
+  --amber-pale: #fdf0e6;
+  --gold: #d4a853;
+  --sage: #6b7c5e;
+  --blush: #e8c4b8;
+  --muted: #8a7d72;
+  --border: rgba(26,22,18,0.12);
+  --border-strong: rgba(26,22,18,0.25);
+}
+ 
+* { margin: 0; padding: 0; box-sizing: border-box; }
+ 
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--cream);
+  color: var(--charcoal);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
+}
+ 
+/* Film grain overlay */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 1000;
+  opacity: 0.5;
+}
+ 
+/* Decorative corner lines */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 20px;
+  border: 1px solid var(--border);
+  pointer-events: none;
+  z-index: 999;
+}
+ 
+/* ── APP SHELL ── */
+.app {
+  width: 100%;
+  max-width: 520px;
+  padding: 16px;
+  position: relative;
+  z-index: 10;
+}
+ 
+/* ── SCREEN ── */
+.screen {
+  display: none;
+  animation: screenIn 0.5s cubic-bezier(0.16,1,0.3,1) forwards;
+}
+.screen.active { display: block; }
+ 
+@keyframes screenIn {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+ 
+/* ── CARD ── */
+.card {
+  background: var(--warm-white);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 40px 36px;
+  box-shadow: 0 2px 0 var(--border), 4px 8px 40px rgba(26,22,18,0.08);
+  position: relative;
+}
+ 
+/* Top film strip decoration */
+.card::before {
+  content: '● ● ● ● ● ● ● ● ● ● ● ●';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  background: var(--charcoal);
+  color: var(--cream);
+  font-size: 7px;
+  letter-spacing: 2px;
+  padding: 5px 12px;
+  border-radius: 3px 3px 0 0;
+  font-family: 'Space Mono', monospace;
+  overflow: hidden;
+  white-space: nowrap;
+}
+ 
+.card-inner { padding-top: 8px; }
+ 
+/* ── TYPOGRAPHY ── */
+.eyebrow {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: var(--amber);
+  margin-bottom: 10px;
+}
+ 
+h1.display {
+  font-family: 'DM Serif Display', serif;
+  font-size: 44px;
+  line-height: 1;
+  color: var(--charcoal);
+  margin-bottom: 6px;
+}
+ 
+h1.display em {
+  font-style: italic;
+  color: var(--amber);
+}
+ 
+h2.title {
+  font-family: 'DM Serif Display', serif;
+  font-size: 28px;
+  line-height: 1.15;
+  color: var(--charcoal);
+  margin-bottom: 8px;
+}
+ 
+.subtitle {
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.65;
+  margin-bottom: 28px;
+}
+ 
+/* ── DIVIDER ── */
+.divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border-strong), transparent);
+  margin: 24px 0;
+}
+ 
+/* ── BUTTONS ── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 28px;
+  border: none;
+  border-radius: 3px;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-decoration: none;
+  letter-spacing: 0.3px;
+}
+ 
+.btn-primary {
+  background: var(--charcoal);
+  color: var(--cream);
+  width: 100%;
+}
+.btn-primary:hover { background: var(--ink); transform: translateY(-1px); box-shadow: 0 4px 16px rgba(26,22,18,0.25); }
+ 
+.btn-amber {
+  background: var(--amber);
+  color: #fff;
+  width: 100%;
+}
+.btn-amber:hover { background: var(--amber-light); transform: translateY(-1px); box-shadow: 0 4px 16px rgba(200,96,26,0.35); }
+ 
+.btn-outline {
+  background: transparent;
+  color: var(--charcoal);
+  border: 1.5px solid var(--border-strong);
+  width: 100%;
+}
+.btn-outline:hover { border-color: var(--charcoal); background: rgba(26,22,18,0.03); }
+ 
+.btn-sm {
+  padding: 10px 20px;
+  font-size: 13px;
+  width: auto;
+}
+ 
+/* ── WELCOME SCREEN ── */
+.logo-mark {
+  width: 52px;
+  height: 52px;
+  background: var(--charcoal);
+  border-radius: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 24px;
+}
+.logo-mark svg { width: 28px; height: 28px; fill: var(--cream); }
+ 
+.pricing-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--amber-pale);
+  border: 1px solid rgba(200,96,26,0.2);
+  border-radius: 100px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--amber);
+  margin-bottom: 28px;
+}
+ 
+.features-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 28px;
+}
+ 
+.feature-item {
+  text-align: center;
+  padding: 14px 8px;
+  background: var(--cream);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+}
+ 
+.feature-item .fi-icon { font-size: 20px; margin-bottom: 6px; }
+.feature-item .fi-label { font-size: 11px; font-weight: 600; color: var(--ink); display: block; }
+.feature-item .fi-sub { font-size: 10px; color: var(--muted); margin-top: 2px; }
+ 
+/* ── PAYMENT SCREEN ── */
+.payment-amount {
+  text-align: center;
+  background: var(--charcoal);
+  color: var(--cream);
+  border-radius: 3px;
+  padding: 24px;
+  margin-bottom: 24px;
+}
+.payment-amount .amt-label { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; opacity: 0.5; font-family: 'Space Mono', monospace; margin-bottom: 8px; }
+.payment-amount .amt-value { font-family: 'DM Serif Display', serif; font-size: 48px; line-height: 1; }
+.payment-amount .amt-desc { font-size: 12px; opacity: 0.5; margin-top: 6px; }
+ 
+.qr-container {
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  background: var(--cream);
+}
+ 
+.qr-box {
+  width: 160px;
+  height: 160px;
+  position: relative;
+}
+ 
+/* Custom QR code made with SVG */
+.qr-svg { width: 160px; height: 160px; }
+ 
+.qr-label {
+  font-size: 11px;
+  color: var(--muted);
+  font-family: 'Space Mono', monospace;
+  letter-spacing: 1px;
+}
+ 
+.payment-methods {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+ 
+.pay-method {
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  background: var(--cream);
+}
+ 
+.pay-method.active-method {
+  border-color: var(--amber);
+  color: var(--amber);
+  background: var(--amber-pale);
+}
+ 
+.payment-note {
+  text-align: center;
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+}
+ 
+/* Payment processing animation */
+.payment-processing {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 28px;
+}
+.pay-spinner {
+  width: 44px;
+  height: 44px;
+  border: 3px solid var(--border);
+  border-top-color: var(--amber);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+ 
+.payment-success {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 20px;
+  text-align: center;
+}
+.success-icon {
+  width: 52px;
+  height: 52px;
+  background: #e8f5e9;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  animation: popIn 0.4s cubic-bezier(0.34,1.56,0.64,1);
+}
+@keyframes popIn { from { transform: scale(0); } to { transform: scale(1); } }
+ 
+/* ── CAMERA SCREEN ── */
+.viewfinder {
+  position: relative;
+  background: var(--charcoal);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 16px;
+  aspect-ratio: 4/3;
+}
+ 
+#video, #timer-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transform: scaleX(-1); /* mirror */
+}
+ 
+.viewfinder-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+ 
+/* Corner brackets */
+.vf-corner {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border-color: rgba(255,255,255,0.6);
+  border-style: solid;
+}
+.vf-corner.tl { top: 10px; left: 10px; border-width: 2px 0 0 2px; }
+.vf-corner.tr { top: 10px; right: 10px; border-width: 2px 2px 0 0; }
+.vf-corner.bl { bottom: 10px; left: 10px; border-width: 0 0 2px 2px; }
+.vf-corner.br { bottom: 10px; right: 10px; border-width: 0 2px 2px 0; }
+ 
+.vf-badge {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  background: rgba(0,0,0,0.5);
+  border: 1px solid rgba(255,255,255,0.2);
+  color: white;
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 2px;
+  letter-spacing: 1px;
+}
+ 
+.vf-rec {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(0,0,0,0.5);
+  padding: 4px 8px;
+  border-radius: 2px;
+}
+.vf-rec-dot { width: 7px; height: 7px; background: #ef4444; border-radius: 50%; animation: blink 1s infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+.vf-rec-text { font-size: 10px; color: white; font-family: 'Space Mono', monospace; letter-spacing: 1px; }
+ 
+canvas { display: none; }
+ 
+/* ── COUNTDOWN ── */
+.countdown-ring {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  margin: 0 auto 16px;
+}
+.countdown-ring svg { transform: rotate(-90deg); }
+.countdown-ring .ring-bg { fill: none; stroke: var(--border); stroke-width: 4; }
+.countdown-ring .ring-prog { fill: none; stroke: var(--amber); stroke-width: 4; stroke-linecap: round; transition: stroke-dashoffset 0.9s linear; }
+.countdown-num {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'DM Serif Display', serif;
+  font-size: 42px;
+  color: var(--charcoal);
+}
+ 
+.shot-indicator {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.shot-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--border);
+  border: 1.5px solid var(--border-strong);
+  transition: all 0.3s;
+}
+.shot-dot.done { background: var(--amber); border-color: var(--amber); }
+.shot-dot.active { background: var(--charcoal); border-color: var(--charcoal); animation: pulse-dot 1s infinite; }
+@keyframes pulse-dot { 0%,100%{transform:scale(1)} 50%{transform:scale(1.3)} }
+ 
+/* Flash overlay */
+.flash-overlay {
+  position: fixed;
+  inset: 0;
+  background: white;
+  z-index: 9000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.05s;
+}
+.flash-overlay.flash { opacity: 1; }
+ 
+/* ── PHOTOS REVIEW ── */
+.photo-strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin-bottom: 20px;
+}
+ 
+.photo-thumb {
+  aspect-ratio: 3/4;
+  background: var(--charcoal);
+  border-radius: 2px;
+  overflow: hidden;
+  position: relative;
+}
+.photo-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1);
+}
+.photo-thumb .thumb-num {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  background: rgba(0,0,0,0.6);
+  color: white;
+  font-size: 9px;
+  font-family: 'Space Mono', monospace;
+  padding: 2px 5px;
+  border-radius: 1px;
+}
+ 
+/* ── STYLE SELECTION ── */
+.style-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 24px;
+}
+ 
+.style-opt {
+  border: 1.5px solid var(--border);
+  border-radius: 3px;
+  padding: 14px 10px;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.2s;
+  background: var(--cream);
+}
+.style-opt:hover { border-color: var(--amber); }
+.style-opt.selected { border-color: var(--amber); background: var(--amber-pale); }
+ 
+.style-preview {
+  width: 50px;
+  height: 64px;
+  background: white;
+  border: 1px solid rgba(0,0,0,0.1);
+  margin: 0 auto 8px;
+  box-shadow: 2px 2px 6px rgba(0,0,0,0.12);
+  position: relative;
+}
+ 
+.style-preview.classic { border-radius: 2px; }
+.style-preview.rounded { border-radius: 12px; }
+.style-preview.strip { height: 120px; width: 36px; border-radius: 2px; }
+ 
+.style-preview .sp-img {
+  position: absolute;
+  top: 8px; left: 8px; right: 8px;
+  bottom: 20px;
+  background: linear-gradient(135deg, #d4e0cc, #b8c9d4);
+  border-radius: 1px;
+}
+.style-preview.rounded .sp-img { border-radius: 8px; }
+.style-preview.strip .sp-img {
+  bottom: auto;
+  height: 28px;
+  left: 4px; right: 4px; top: 4px;
+}
+.style-preview .sp-img-2 {
+  position: absolute;
+  left: 4px; right: 4px;
+  height: 28px;
+  top: 38px;
+  background: linear-gradient(135deg, #e8d4cc, #d4c8e0);
+  border-radius: 1px;
+}
+.style-preview .sp-img-3 {
+  position: absolute;
+  left: 4px; right: 4px;
+  height: 28px;
+  top: 72px;
+  background: linear-gradient(135deg, #ccd4e8, #d4e8cc);
+  border-radius: 1px;
+}
+.style-preview .sp-line {
+  position: absolute;
+  bottom: 6px;
+  left: 8px; right: 8px;
+  height: 1px;
+  background: var(--border);
+}
+ 
+.style-label { font-size: 12px; font-weight: 600; color: var(--ink); }
+.style-sub { font-size: 10px; color: var(--muted); margin-top: 2px; }
+ 
+/* Date position options */
+.date-options {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 24px;
+}
+ 
+.date-opt {
+  border: 1.5px solid var(--border);
+  border-radius: 3px;
+  padding: 10px 6px;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.2s;
+  background: var(--cream);
+}
+.date-opt:hover { border-color: var(--amber); }
+.date-opt.selected { border-color: var(--amber); background: var(--amber-pale); }
+.date-opt-label { font-size: 11px; font-weight: 600; color: var(--ink); }
+.date-opt-icon { font-size: 14px; margin-bottom: 4px; }
+ 
+/* ── PRINTING ── */
+.print-stages {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+ 
+.print-stage {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--cream);
+  transition: all 0.3s;
+}
+ 
+.print-stage.active { border-color: var(--amber); background: var(--amber-pale); }
+.print-stage.done { border-color: var(--sage); background: rgba(107,124,94,0.06); }
+ 
+.ps-icon {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  flex-shrink: 0;
+  transition: all 0.3s;
+}
+.print-stage.active .ps-icon { background: var(--amber); animation: psbeat 0.8s infinite; }
+.print-stage.done .ps-icon { background: var(--sage); }
+@keyframes psbeat { 0%,100%{transform:scale(1)} 50%{transform:scale(1.1)} }
+ 
+.ps-text { flex: 1; }
+.ps-title { font-size: 13px; font-weight: 600; color: var(--ink); }
+.ps-sub { font-size: 11px; color: var(--muted); }
+.ps-check { font-size: 16px; opacity: 0; transition: opacity 0.3s; }
+.print-stage.done .ps-check { opacity: 1; }
+ 
+.print-bar-wrap {
+  background: var(--cream);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  height: 6px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+.print-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--amber), var(--gold));
+  border-radius: 100px;
+  width: 0%;
+  transition: width 0.4s ease;
+}
+ 
+.print-pct {
+  text-align: right;
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  color: var(--amber);
+  margin-bottom: 20px;
+}
+ 
+/* ── POLAROID PREVIEW ── */
+.polaroid-preview-wrap {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+ 
+.polaroid-card {
+  background: white;
+  box-shadow: 0 3px 12px rgba(0,0,0,0.15), 0 1px 3px rgba(0,0,0,0.08);
+  padding: 8px 8px 20px;
+  position: relative;
+  transform-origin: center bottom;
+}
+ 
+.polaroid-card.classic { border-radius: 2px; }
+.polaroid-card.rounded { border-radius: 10px; }
+.polaroid-card.strip { padding: 5px 5px 14px; }
+ 
+.polaroid-img {
+  background: var(--charcoal);
+  overflow: hidden;
+}
+.polaroid-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transform: scaleX(-1);
+}
+ 
+.polaroid-date {
+  font-family: 'Space Mono', monospace;
+  font-size: 7px;
+  color: var(--muted);
+  text-align: center;
+  position: absolute;
+}
+ 
+/* ── COMPLETE ── */
+.confetti-strip {
+  height: 4px;
+  background: linear-gradient(90deg, #ef4444, var(--amber), #f59e0b, var(--sage), #3b82f6, #8b5cf6);
+  border-radius: 100px;
+  margin-bottom: 24px;
+  animation: shimmer 2s linear infinite;
+  background-size: 200% 100%;
+}
+@keyframes shimmer { to { background-position: 200% 0; } }
+ 
+.receipt-box {
+  border: 1px dashed var(--border-strong);
+  border-radius: 2px;
+  padding: 16px 20px;
+  background: var(--cream);
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 24px;
+  line-height: 1.8;
+}
+ 
+.receipt-box .r-row { display: flex; justify-content: space-between; }
+.receipt-box .r-total { color: var(--charcoal); font-weight: 700; border-top: 1px solid var(--border); padding-top: 8px; margin-top: 4px; }
+ 
+/* ── STEP INDICATOR ── */
+.steps {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 24px;
+}
+.step-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--border); transition: all 0.3s; }
+.step-dot.s-done { background: var(--sage); }
+.step-dot.s-active { background: var(--amber); width: 20px; border-radius: 3px; }
+ 
+/* ── UTIL ── */
+.text-center { text-align: center; }
+.mb-4 { margin-bottom: 16px; }
+.mb-6 { margin-bottom: 24px; }
+.mono { font-family: 'Space Mono', monospace; }
+ 
+/* ── PRINT STYLES ── */
+@media print {
+  body * { visibility: hidden !important; }
+  .print-area, .print-area * { visibility: visible !important; }
+  .print-area {
+    position: absolute !important;
+    left: 0; top: 0;
+    width: 100%;
+    padding: 20px;
+  }
+  body::after { display: none; }
+}
+ 
+.print-area { display: none; }
+</style>
+</head>
+<body>
+ 
+<div class="flash-overlay" id="flash"></div>
+<div class="print-area" id="printArea"></div>
+ 
+<div class="app">
+ 
+  <!-- ── STEP DOTS ── -->
+  <div class="steps" id="stepDots">
+    <div class="step-dot s-active" data-step="0"></div>
+    <div class="step-dot" data-step="1"></div>
+    <div class="step-dot" data-step="2"></div>
+    <div class="step-dot" data-step="3"></div>
+    <div class="step-dot" data-step="4"></div>
+    <div class="step-dot" data-step="5"></div>
+    <div class="step-dot" data-step="6"></div>
+  </div>
+ 
+  <!-- ══════════════════════════════════ -->
+  <!-- SCREEN 0 — WELCOME -->
+  <!-- ══════════════════════════════════ -->
+  <div class="screen active" id="s-welcome">
+    <div class="card">
+      <div class="card-inner">
+        <div class="logo-mark">
+          <svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        </div>
+        <div class="eyebrow">Est. 2024 — Instant Prints</div>
+        <h1 class="display">FLASH<br/><em>Photobooth</em></h1>
+        <p class="subtitle" style="margin-top:10px">Step inside. Strike a pose. Walk out with film-quality polaroids in under two minutes.</p>
+ 
+        <div class="pricing-pill">
+          <span>✦</span> ₹200 · 4 Photos · Instant Print
+        </div>
+ 
+        <div class="features-row">
+          <div class="feature-item">
+            <div class="fi-icon">🎞️</div>
+            <span class="fi-label">4 Shots</span>
+            <div class="fi-sub">10 sec apart</div>
+          </div>
+          <div class="feature-item">
+            <div class="fi-icon">🖼️</div>
+            <span class="fi-label">3 Styles</span>
+            <div class="fi-sub">Your choice</div>
+          </div>
+          <div class="feature-item">
+            <div class="fi-icon">⚡</div>
+            <span class="fi-label">Instant</span>
+            <div class="fi-sub">Print & go</div>
+          </div>
+        </div>
+ 
+        <button class="btn btn-amber" id="btn-start">Begin Session →</button>
+      </div>
+    </div>
+  </div>
+ 
+  <!-- ══════════════════════════════════ -->
+  <!-- SCREEN 1 — PAYMENT -->
+  <!-- ══════════════════════════════════ -->
+  <div class="screen" id="s-payment">
+    <div class="card">
+      <div class="card-inner">
+        <div class="eyebrow">Step 1 of 6 — Payment</div>
+        <h2 class="title">Scan & Pay</h2>
+        <p class="subtitle">Complete payment to unlock your session.</p>
+ 
+        <div class="payment-amount">
+          <div class="amt-label">Total Due</div>
+          <div class="amt-value">₹200</div>
+          <div class="amt-desc">4 polaroid prints · any style</div>
+        </div>
+ 
+        <div class="payment-methods" style="margin-bottom:14px">
+          <div class="pay-method active-method">UPI</div>
+          <div class="pay-method">GPay</div>
+          <div class="pay-method">PhonePe</div>
+          <div class="pay-method">Paytm</div>
+        </div>
+ 
+        <!-- QR Code -->
+        <div class="qr-container">
+          <div class="qr-box">
+            <!-- Realistic-looking QR code SVG -->
+            <svg class="qr-svg" viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg">
+              <rect width="160" height="160" fill="white"/>
+              <!-- Finder pattern TL -->
+              <rect x="10" y="10" width="45" height="45" rx="2" fill="#1a1612"/>
+              <rect x="16" y="16" width="33" height="33" rx="1" fill="white"/>
+              <rect x="22" y="22" width="21" height="21" rx="1" fill="#1a1612"/>
+              <!-- Finder pattern TR -->
+              <rect x="105" y="10" width="45" height="45" rx="2" fill="#1a1612"/>
+              <rect x="111" y="16" width="33" height="33" rx="1" fill="white"/>
+              <rect x="117" y="22" width="21" height="21" rx="1" fill="#1a1612"/>
+              <!-- Finder pattern BL -->
+              <rect x="10" y="105" width="45" height="45" rx="2" fill="#1a1612"/>
+              <rect x="16" y="111" width="33" height="33" rx="1" fill="white"/>
+              <rect x="22" y="117" width="21" height="21" rx="1" fill="#1a1612"/>
+              <!-- Data cells (randomized realistic pattern) -->
+              <g fill="#1a1612">
+                <rect x="62" y="10" width="7" height="7"/><rect x="75" y="10" width="7" height="7"/><rect x="88" y="10" width="7" height="7"/>
+                <rect x="62" y="23" width="7" height="7"/><rect x="88" y="23" width="7" height="7"/>
+                <rect x="75" y="36" width="7" height="7"/><rect x="62" y="49" width="7" height="7"/><rect x="88" y="49" width="7" height="7"/>
+                <rect x="10" y="62" width="7" height="7"/><rect x="23" y="62" width="7" height="7"/><rect x="49" y="62" width="7" height="7"/>
+                <rect x="62" y="62" width="7" height="7"/><rect x="75" y="62" width="7" height="7"/><rect x="88" y="62" width="7" height="7"/>
+                <rect x="101" y="62" width="7" height="7"/><rect x="127" y="62" width="7" height="7"/><rect x="140" y="62" width="7" height="7"/>
+                <rect x="10" y="75" width="7" height="7"/><rect x="36" y="75" width="7" height="7"/><rect x="62" y="75" width="7" height="7"/>
+                <rect x="88" y="75" width="7" height="7"/><rect x="114" y="75" width="7" height="7"/><rect x="140" y="75" width="7" height="7"/>
+                <rect x="23" y="88" width="7" height="7"/><rect x="49" y="88" width="7" height="7"/><rect x="75" y="88" width="7" height="7"/>
+                <rect x="101" y="88" width="7" height="7"/><rect x="127" y="88" width="7" height="7"/>
+                <rect x="10" y="101" width="7" height="7"/><rect x="36" y="101" width="7" height="7"/><rect x="62" y="101" width="7" height="7"/>
+                <rect x="88" y="101" width="7" height="7"/><rect x="114" y="101" width="7" height="7"/><rect x="140" y="101" width="7" height="7"/>
+                <rect x="62" y="114" width="7" height="7"/><rect x="75" y="114" width="7" height="7"/><rect x="101" y="114" width="7" height="7"/>
+                <rect x="127" y="114" width="7" height="7"/><rect x="140" y="114" width="7" height="7"/>
+                <rect x="62" y="127" width="7" height="7"/><rect x="88" y="127" width="7" height="7"/><rect x="114" y="127" width="7" height="7"/>
+                <rect x="62" y="140" width="7" height="7"/><rect x="75" y="140" width="7" height="7"/><rect x="101" y="140" width="7" height="7"/>
+                <rect x="127" y="140" width="7" height="7"/>
+              </g>
+              <!-- Center logo hint -->
+              <rect x="69" y="69" width="22" height="22" rx="2" fill="white" stroke="#1a1612" stroke-width="1"/>
+              <text x="80" y="84" text-anchor="middle" font-size="11" font-family="serif" fill="#1a1612">F</text>
+            </svg>
+          </div>
+          <div class="qr-label">UPI · flash@photobooth</div>
+        </div>
+ 
+        <div class="payment-note">
+          🔒 Secured by Razorpay · End-to-end encrypted
+        </div>
+ 
+        <!-- Normal view -->
+        <div id="pay-normal">
+          <button class="btn btn-primary mb-4" id="btn-pay-simulate">Simulate Payment ₹200 →</button>
+          <button class="btn btn-outline btn-sm" style="width:100%; font-size:12px; color:var(--muted);" id="btn-pay-cash">Pay at counter (cash)</button>
+        </div>
+ 
+        <!-- Processing view -->
+        <div class="payment-processing" id="pay-processing">
+          <div class="pay-spinner"></div>
+          <div style="font-size:13px; font-weight:600; color:var(--ink)">Verifying payment...</div>
+          <div style="font-size:11px; color:var(--muted); font-family:'Space Mono',monospace">TXN · FLASH2024···</div>
+        </div>
+ 
+        <!-- Success view -->
+        <div class="payment-success" id="pay-success">
+          <div class="success-icon">✓</div>
+          <div style="font-size:15px; font-weight:700; color:var(--ink)">Payment Received!</div>
+          <div style="font-size:11px; color:var(--muted); font-family:'Space Mono',monospace">₹200.00 · REF#FL240001</div>
+        </div>
+      </div>
+    </div>
+  </div>
+ 
+  <!-- ══════════════════════════════════ -->
+  <!-- SCREEN 2 — CAMERA SETUP -->
+  <!-- ══════════════════════════════════ -->
+  <div class="screen" id="s-camera">
+    <div class="card">
+      <div class="card-inner">
+        <div class="eyebrow">Step 2 of 6 — Get Ready</div>
+        <h2 class="title">Position Yourself</h2>
+        <p class="subtitle">Make sure you're framed nicely. We'll take 4 shots, 10 seconds apart.</p>
+ 
+        <div class="viewfinder" id="viewfinder-setup">
+          <video id="video" autoplay playsinline muted></video>
+          <div class="viewfinder-overlay">
+            <div class="vf-corner tl"></div>
+            <div class="vf-corner tr"></div>
+            <div class="vf-corner bl"></div>
+            <div class="vf-corner br"></div>
+            <div class="vf-badge">LIVE PREVIEW</div>
+          </div>
+        </div>
+ 
+        <canvas id="canvas"></canvas>
+ 
+        <button class="btn btn-amber" id="btn-ready">I'm Ready — Start Countdown →</button>
+      </div>
+    </div>
+  </div>
+ 
+  <!-- ══════════════════════════════════ -->
+  <!-- SCREEN 3 — SHOOTING -->
+  <!-- ══════════════════════════════════ -->
+  <div class="screen" id="s-shooting">
+    <div class="card">
+      <div class="card-inner">
+        <div class="eyebrow">Step 3 of 6 — Shooting</div>
+        <h2 class="title" id="shoot-title">Smile! ✨</h2>
+ 
+        <div class="viewfinder">
+          <video id="timer-video" autoplay playsinline muted></video>
+          <div class="viewfinder-overlay">
+            <div class="vf-corner tl"></div>
+            <div class="vf-corner tr"></div>
+            <div class="vf-corner bl"></div>
+            <div class="vf-corner br"></div>
+            <div class="vf-rec">
+              <div class="vf-rec-dot"></div>
+              <span class="vf-rec-text">REC</span>
+            </div>
+            <div class="vf-badge" id="vf-shot-badge">SHOT 1 / 4</div>
+          </div>
+        </div>
+ 
+        <div class="shot-indicator" id="shotIndicator">
+          <div class="shot-dot active"></div>
+          <div class="shot-dot"></div>
+          <div class="shot-dot"></div>
+          <div class="shot-dot"></div>
+        </div>
+ 
+        <div class="countdown-ring">
+          <svg width="120" height="120" viewBox="0 0 120 120">
+            <circle class="ring-bg" cx="60" cy="60" r="52"/>
+            <circle class="ring-prog" id="ringProg" cx="60" cy="60" r="52"
+              stroke-dasharray="326.7" stroke-dashoffset="0"/>
+          </svg>
+          <div class="countdown-num" id="countNum">10</div>
+        </div>
+ 
+        <p class="text-center" style="font-size:13px; color:var(--muted)" id="shoot-hint">Get ready for shot 1…</p>
+      </div>
+    </div>
+  </div>
+ 
+  <!-- ══════════════════════════════════ -->
+  <!-- SCREEN 4 — REVIEW -->
+  <!-- ══════════════════════════════════ -->
+  <div class="screen" id="s-review">
+    <div class="card">
+      <div class="card-inner">
+        <div class="eyebrow">Step 4 of 6 — Review</div>
+        <h2 class="title">Your 4 Shots 🎉</h2>
+        <p class="subtitle">Looking great! These will be your polaroids.</p>
+ 
+        <div class="photo-strip" id="photoStrip"></div>
+ 
+        <button class="btn btn-amber" id="btn-to-style">Choose Polaroid Style →</button>
+      </div>
+    </div>
+  </div>
+ 
+  <!-- ══════════════════════════════════ -->
+  <!-- SCREEN 5 — STYLE SELECTION -->
+  <!-- ══════════════════════════════════ -->
+  <div class="screen" id="s-style">
+    <div class="card">
+      <div class="card-inner">
+        <div class="eyebrow">Step 5 of 6 — Customise</div>
+        <h2 class="title">Pick Your Style</h2>
+        <p class="subtitle">Choose the polaroid format and where your date appears.</p>
+ 
+        <div style="font-size:11px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted); margin-bottom:10px;">Format</div>
+        <div class="style-grid" id="styleGrid">
+          <div class="style-opt selected" data-shape="classic">
+            <div class="style-preview classic">
+              <div class="sp-img"></div>
+              <div class="sp-line"></div>
+            </div>
+            <div class="style-label">Classic</div>
+            <div class="style-sub">4 individual</div>
+          </div>
+          <div class="style-opt" data-shape="rounded">
+            <div class="style-preview rounded">
+              <div class="sp-img"></div>
+              <div class="sp-line"></div>
+            </div>
+            <div class="style-label">Rounded</div>
+            <div class="style-sub">Soft edges</div>
+          </div>
+          <div class="style-opt" data-shape="strip">
+            <div class="style-preview strip">
+              <div class="sp-img"></div>
+              <div class="sp-img-2"></div>
+              <div class="sp-img-3"></div>
+            </div>
+            <div class="style-label">Strip</div>
+            <div class="style-sub">Film roll</div>
+          </div>
+        </div>
+ 
+        <div class="divider"></div>
+ 
+        <div style="font-size:11px; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted); margin-bottom:10px;">Date Placement</div>
+        <div class="date-options" id="dateOptions">
+          <div class="date-opt selected" data-date="bottom">
+            <div class="date-opt-icon">⬇️</div>
+            <div class="date-opt-label">Below</div>
+          </div>
+          <div class="date-opt" data-date="top">
+            <div class="date-opt-icon">⬆️</div>
+            <div class="date-opt-label">Above</div>
+          </div>
+          <div class="date-opt" data-date="corner">
+            <div class="date-opt-icon">↙️</div>
+            <div class="date-opt-label">Corner</div>
+          </div>
+          <div class="date-opt" data-date="none">
+            <div class="date-opt-icon">🚫</div>
+            <div class="date-opt-label">None</div>
+          </div>
+        </div>
+ 
+        <button class="btn btn-amber" id="btn-confirm-style">Confirm & Print →</button>
+      </div>
+    </div>
+  </div>
+ 
+  <!-- ══════════════════════════════════ -->
+  <!-- SCREEN 6 — PRINTING -->
+  <!-- ══════════════════════════════════ -->
+  <div class="screen" id="s-printing">
+    <div class="card">
+      <div class="card-inner">
+        <div class="eyebrow">Step 6 of 6 — Printing</div>
+        <h2 class="title">Developing… 🎞️</h2>
+        <p class="subtitle">Your polaroids are being printed. This takes about 20 seconds.</p>
+ 
+        <div class="print-stages" id="printStages">
+          <div class="print-stage active" id="ps-1">
+            <div class="ps-icon">🖼️</div>
+            <div class="ps-text">
+              <div class="ps-title">Processing images</div>
+              <div class="ps-sub">Applying filters & colour grading</div>
+            </div>
+            <div class="ps-check">✓</div>
+          </div>
+          <div class="print-stage" id="ps-2">
+            <div class="ps-icon">✨</div>
+            <div class="ps-text">
+              <div class="ps-title">Adding polaroid frame</div>
+              <div class="ps-sub">Applying your chosen style</div>
+            </div>
+            <div class="ps-check">✓</div>
+          </div>
+          <div class="print-stage" id="ps-3">
+            <div class="ps-icon">🖨️</div>
+            <div class="ps-text">
+              <div class="ps-title">Printing</div>
+              <div class="ps-sub">Dye-sublimation at 300 DPI</div>
+            </div>
+            <div class="ps-check">✓</div>
+          </div>
+          <div class="print-stage" id="ps-4">
+            <div class="ps-icon">🌡️</div>
+            <div class="ps-text">
+              <div class="ps-title">Developing</div>
+              <div class="ps-sub">Allow 60 seconds to fully develop</div>
+            </div>
+            <div class="ps-check">✓</div>
+          </div>
+        </div>
+ 
+        <div class="print-bar-wrap">
+          <div class="print-bar" id="printBar"></div>
+        </div>
+        <div class="print-pct" id="printPct">0%</div>
+ 
+        <!-- Polaroid preview will render here -->
+        <div class="polaroid-preview-wrap" id="polaroidPreview"></div>
+      </div>
+    </div>
+  </div>
+ 
+  <!-- ══════════════════════════════════ -->
+  <!-- SCREEN 7 — COMPLETE -->
+  <!-- ══════════════════════════════════ -->
+  <div class="screen" id="s-complete">
+    <div class="card">
+      <div class="card-inner text-center">
+        <div class="confetti-strip"></div>
+ 
+        <div style="font-size:48px; margin-bottom:12px">📸</div>
+        <div class="eyebrow" style="justify-content:center">All done!</div>
+        <h2 class="title">Pick up your prints!</h2>
+        <p class="subtitle">Your polaroids are in the tray below the machine. Don't forget them! 👇</p>
+ 
+        <!-- Polaroid preview mini -->
+        <div class="polaroid-preview-wrap" id="finalPreview" style="margin-bottom:20px"></div>
+ 
+        <div class="receipt-box">
+          <div class="r-row"><span>Session</span><span>#FL240001</span></div>
+          <div class="r-row"><span>Photos</span><span>4 prints</span></div>
+          <div class="r-row"><span>Style</span><span id="receipt-style">Classic</span></div>
+          <div class="r-row"><span>Date</span><span id="receipt-date-pos">Below</span></div>
+          <div class="r-row"><span>Payment</span><span>UPI · Paid</span></div>
+          <div class="r-row r-total"><span>Total</span><span>₹200.00</span></div>
+        </div>
+ 
+        <button class="btn btn-primary" id="btn-restart">Start New Session →</button>
+      </div>
+    </div>
+  </div>
+ 
+</div><!-- .app -->
+ 
+<script>
+// ──────────────────────────────────────
+// STATE
+// ──────────────────────────────────────
+const state = {
+  step: 0,
+  photos: [],
+  stream: null,
+  selectedShape: 'classic',
+  selectedDate: 'bottom',
+  photoIndex: 0,
+  timerInterval: null,
+};
+ 
+// ──────────────────────────────────────
+// SCREEN ROUTING
+// ──────────────────────────────────────
+const SCREENS = ['s-welcome','s-payment','s-camera','s-shooting','s-review','s-style','s-printing','s-complete'];
+ 
+function goTo(idx) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(SCREENS[idx]).classList.add('active');
+  state.step = idx;
+  updateStepDots(idx);
+  window.scrollTo(0, 0);
+}
+ 
+function updateStepDots(current) {
+  document.querySelectorAll('.step-dot').forEach((d, i) => {
+    d.className = 'step-dot';
+    if (i < current) d.classList.add('s-done');
+    else if (i === current) d.classList.add('s-active');
+  });
+}
+ 
+// ──────────────────────────────────────
+// PAYMENT SIMULATION
+// ──────────────────────────────────────
+document.getElementById('btn-start').addEventListener('click', () => goTo(1));
+ 
+document.getElementById('btn-pay-simulate').addEventListener('click', () => {
+  document.getElementById('pay-normal').style.display = 'none';
+  const proc = document.getElementById('pay-processing');
+  proc.style.display = 'flex';
+ 
+  // Fake network delay → success
+  setTimeout(() => {
+    proc.style.display = 'none';
+    const succ = document.getElementById('pay-success');
+    succ.style.display = 'flex';
+    setTimeout(() => {
+      initCamera();
+      goTo(2);
+    }, 1800);
+  }, 2400);
+});
+ 
+document.getElementById('btn-pay-cash').addEventListener('click', () => {
+  // Cash — skip straight through
+  initCamera();
+  goTo(2);
+});
+ 
+// ──────────────────────────────────────
+// CAMERA
+// ──────────────────────────────────────
+async function initCamera() {
+  try {
+    state.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+    document.getElementById('video').srcObject = state.stream;
+    document.getElementById('timer-video').srcObject = state.stream;
+  } catch (e) {
+    alert('Camera permission required. Please allow camera access and reload.');
+  }
+}
+ 
+document.getElementById('btn-ready').addEventListener('click', () => {
+  state.photos = [];
+  state.photoIndex = 0;
+  goTo(3);
+  startShooting();
+});
+ 
+// ──────────────────────────────────────
+// SHOOTING — 10-second countdown
+// ──────────────────────────────────────
+const TOTAL_PHOTOS = 4;
+const SHOT_SECONDS = 10;
+const CIRCUMFERENCE = 326.7; // 2 * π * 52
+ 
+function startShooting() {
+  updateShotUI();
+  runCountdown(SHOT_SECONDS, () => capturePhoto());
+}
+ 
+function updateShotUI() {
+  const i = state.photoIndex;
+  document.getElementById('vf-shot-badge').textContent = `SHOT ${i + 1} / ${TOTAL_PHOTOS}`;
+  document.getElementById('shoot-title').textContent = i === 0 ? 'Smile! ✨' : i === 1 ? 'Again! 😄' : i === 2 ? 'One more! 🤩' : 'Last one! 🎉';
+  document.getElementById('shoot-hint').textContent = i === 0 ? 'Get ready for shot 1…' : `Shot ${i + 1} coming up!`;
+ 
+  const dots = document.querySelectorAll('#shotIndicator .shot-dot');
+  dots.forEach((d, idx) => {
+    d.className = 'shot-dot';
+    if (idx < i) d.classList.add('done');
+    else if (idx === i) d.classList.add('active');
+  });
+}
+ 
+function runCountdown(from, onDone) {
+  let secs = from;
+  const ring = document.getElementById('ringProg');
+  const num = document.getElementById('countNum');
+  num.textContent = secs;
+  ring.style.strokeDashoffset = 0;
+ 
+  clearInterval(state.timerInterval);
+  state.timerInterval = setInterval(() => {
+    secs--;
+    num.textContent = secs;
+    const progress = ((SHOT_SECONDS - secs) / SHOT_SECONDS) * CIRCUMFERENCE;
+    ring.style.strokeDashoffset = progress;
+ 
+    if (secs <= 0) {
+      clearInterval(state.timerInterval);
+      onDone();
+    }
+  }, 1000);
+}
+ 
+function capturePhoto() {
+  // Flash
+  const flash = document.getElementById('flash');
+  flash.classList.add('flash');
+  setTimeout(() => flash.classList.remove('flash'), 120);
+ 
+  // Draw frame to canvas
+  const video = document.getElementById('timer-video');
+  const canvas = document.getElementById('canvas');
+  canvas.width = video.videoWidth || 640;
+  canvas.height = video.videoHeight || 480;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  state.photos.push(canvas.toDataURL('image/jpeg', 0.9));
+ 
+  state.photoIndex++;
+ 
+  if (state.photoIndex < TOTAL_PHOTOS) {
+    updateShotUI();
+    // Brief pause then next countdown
+    setTimeout(() => runCountdown(SHOT_SECONDS, () => capturePhoto()), 600);
+  } else {
+    // All done
+    renderReview();
+    goTo(4);
+  }
+}
+ 
+// ──────────────────────────────────────
+// REVIEW
+// ──────────────────────────────────────
+function renderReview() {
+  const strip = document.getElementById('photoStrip');
+  strip.innerHTML = '';
+  state.photos.forEach((src, i) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'photo-thumb';
+    const img = document.createElement('img');
+    img.src = src;
+    const num = document.createElement('div');
+    num.className = 'thumb-num';
+    num.textContent = `#${i + 1}`;
+    wrap.appendChild(img);
+    wrap.appendChild(num);
+    strip.appendChild(wrap);
+  });
+}
+ 
+document.getElementById('btn-to-style').addEventListener('click', () => goTo(5));
+ 
+// ──────────────────────────────────────
+// STYLE SELECTION
+// ──────────────────────────────────────
+document.querySelectorAll('#styleGrid .style-opt').forEach(opt => {
+  opt.addEventListener('click', () => {
+    document.querySelectorAll('#styleGrid .style-opt').forEach(o => o.classList.remove('selected'));
+    opt.classList.add('selected');
+    state.selectedShape = opt.dataset.shape;
+  });
+});
+ 
+document.querySelectorAll('#dateOptions .date-opt').forEach(opt => {
+  opt.addEventListener('click', () => {
+    document.querySelectorAll('#dateOptions .date-opt').forEach(o => o.classList.remove('selected'));
+    opt.classList.add('selected');
+    state.selectedDate = opt.dataset.date;
+  });
+});
+ 
+document.getElementById('btn-confirm-style').addEventListener('click', () => {
+  document.getElementById('receipt-style').textContent =
+    state.selectedShape.charAt(0).toUpperCase() + state.selectedShape.slice(1);
+  document.getElementById('receipt-date-pos').textContent =
+    state.selectedDate.charAt(0).toUpperCase() + state.selectedDate.slice(1);
+  goTo(6);
+  startPrinting();
+});
+ 
+// ──────────────────────────────────────
+// PRINTING
+// ──────────────────────────────────────
+function startPrinting() {
+  const bar = document.getElementById('printBar');
+  const pct = document.getElementById('printPct');
+  const stages = [
+    document.getElementById('ps-1'),
+    document.getElementById('ps-2'),
+    document.getElementById('ps-3'),
+    document.getElementById('ps-4'),
+  ];
+ 
+  // Reset
+  stages.forEach(s => { s.className = 'print-stage'; });
+  stages[0].classList.add('active');
+  bar.style.width = '0%';
+  pct.textContent = '0%';
+ 
+  let progress = 0;
+  const DURATION = 5000; // 5 seconds total simulation
+  const INTERVAL = 80;
+ 
+  const timing = [
+    { at: 0,    stage: 0, msg: 'active' },
+    { at: 25,   stage: 0, done: true, stage2: 1 },
+    { at: 50,   stage: 1, done: true, stage2: 2 },
+    { at: 75,   stage: 2, done: true, stage2: 3 },
+    { at: 95,   stage: 3, done: true },
+  ];
+ 
+  const inc = (INTERVAL / DURATION) * 100;
+ 
+  const iv = setInterval(() => {
+    progress = Math.min(progress + inc, 100);
+    bar.style.width = progress + '%';
+    pct.textContent = Math.round(progress) + '%';
+ 
+    // Trigger stage changes
+    timing.forEach(t => {
+      if (progress >= t.at && progress < t.at + inc + 1) {
+        if (t.done && stages[t.stage]) {
+          stages[t.stage].className = 'print-stage done';
+        }
+        if (t.stage2 !== undefined && stages[t.stage2]) {
+          stages[t.stage2].className = 'print-stage active';
+        }
+      }
+    });
+ 
+    if (progress >= 100) {
+      clearInterval(iv);
+      // Render polaroid previews
+      buildPolaroids('polaroidPreview');
+      buildPolaroids('finalPreview');
+      setTimeout(() => {
+        window.print(); // Trigger system print
+        goTo(7);
+      }, 1200);
+    }
+  }, INTERVAL);
+}
+ 
+// ──────────────────────────────────────
+// POLAROID BUILDER
+// ──────────────────────────────────────
+function buildPolaroids(containerId) {
+  const wrap = document.getElementById(containerId);
+  if (!wrap) return;
+  wrap.innerHTML = '';
+ 
+  const dateStr = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+  const shape = state.selectedShape;
+  const datePos = state.selectedDate;
+ 
+  if (shape === 'strip') {
+    // One long strip
+    const card = document.createElement('div');
+    card.className = 'polaroid-card strip';
+    card.style.cssText = `
+      background: white;
+      padding: 5px 5px 20px;
+      box-shadow: 2px 4px 16px rgba(0,0,0,0.18);
+      border-radius: 2px;
+      width: 90px;
+      position: relative;
+    `;
+ 
+    state.photos.forEach((src, i) => {
+      const imgWrap = document.createElement('div');
+      imgWrap.className = 'polaroid-img';
+      imgWrap.style.cssText = 'width:80px; height:80px; margin-bottom:4px; overflow:hidden;';
+      const img = document.createElement('img');
+      img.src = src;
+      img.style.cssText = 'width:100%;height:100%;object-fit:cover;transform:scaleX(-1);display:block;';
+      imgWrap.appendChild(img);
+      card.appendChild(imgWrap);
+    });
+ 
+    if (datePos !== 'none') {
+      const d = document.createElement('div');
+      d.style.cssText = `
+        font-family: 'Space Mono', monospace;
+        font-size: 7px;
+        color: #8a7d72;
+        text-align: center;
+        margin-top: 2px;
+      `;
+      d.textContent = dateStr;
+      card.appendChild(d);
+    }
+ 
+    wrap.appendChild(card);
+ 
+  } else {
+    // Individual cards
+    state.photos.forEach((src) => {
+      const card = document.createElement('div');
+      const radius = shape === 'rounded' ? '10px' : '2px';
+      card.style.cssText = `
+        background: white;
+        border-radius: ${radius};
+        box-shadow: 2px 4px 16px rgba(0,0,0,0.18);
+        padding: 6px 6px 18px;
+        width: 80px;
+        position: relative;
+      `;
+ 
+      if (datePos === 'top') {
+        const d = document.createElement('div');
+        d.style.cssText = 'font-family:Space Mono,monospace;font-size:6px;color:#8a7d72;text-align:center;margin-bottom:4px;';
+        d.textContent = dateStr;
+        card.appendChild(d);
+      }
+ 
+      const imgWrap = document.createElement('div');
+      imgWrap.style.cssText = `width:68px;height:68px;overflow:hidden;border-radius:${shape === 'rounded' ? '8px' : '1px'};`;
+      const img = document.createElement('img');
+      img.src = src;
+      img.style.cssText = 'width:100%;height:100%;object-fit:cover;transform:scaleX(-1);display:block;';
+      imgWrap.appendChild(img);
+      card.appendChild(imgWrap);
+ 
+      if (datePos === 'bottom') {
+        const d = document.createElement('div');
+        d.style.cssText = 'font-family:Space Mono,monospace;font-size:6px;color:#8a7d72;text-align:center;margin-top:5px;';
+        d.textContent = dateStr;
+        card.appendChild(d);
+      }
+ 
+      if (datePos === 'corner') {
+        const d = document.createElement('div');
+        d.style.cssText = 'font-family:Space Mono,monospace;font-size:5px;color:#8a7d72;position:absolute;bottom:3px;left:4px;';
+        d.textContent = dateStr;
+        card.appendChild(d);
+      }
+ 
+      wrap.appendChild(card);
+    });
+  }
+ 
+  // Build print area
+  const printArea = document.getElementById('printArea');
+  printArea.innerHTML = '';
+  const cloned = wrap.cloneNode(true);
+  cloned.style.display = 'flex';
+  cloned.style.flexWrap = 'wrap';
+  cloned.style.gap = '20px';
+  cloned.style.padding = '30px';
+  cloned.style.justifyContent = 'center';
+  printArea.appendChild(cloned);
+}
+ 
+// ──────────────────────────────────────
+// RESTART
+// ──────────────────────────────────────
+document.getElementById('btn-restart').addEventListener('click', () => {
+  state.photos = [];
+  state.photoIndex = 0;
+  state.selectedShape = 'classic';
+  state.selectedDate = 'bottom';
+ 
+  // Stop camera
+  if (state.stream) {
+    state.stream.getTracks().forEach(t => t.stop());
+    state.stream = null;
+  }
+ 
+  // Reset payment UI
+  document.getElementById('pay-normal').style.display = 'block';
+  document.getElementById('pay-processing').style.display = 'none';
+  document.getElementById('pay-success').style.display = 'none';
+ 
+  // Reset style selections
+  document.querySelectorAll('#styleGrid .style-opt').forEach((o, i) => {
+    o.className = 'style-opt' + (i === 0 ? ' selected' : '');
+  });
+  document.querySelectorAll('#dateOptions .date-opt').forEach((o, i) => {
+    o.className = 'date-opt' + (i === 0 ? ' selected' : '');
+  });
+ 
+  goTo(0);
+});
+</script>
+</body>
+</html>
